@@ -17,6 +17,15 @@ Dieser Stack startet:
    ```
 
 2. Passwoerter und Alias in `.env` anpassen.
+   Optional kannst du die Storage-Pfade trennen:
+   - `BITCOIN_DATA_PATH` fuer die Blockchain/bitcoind-Daten
+   - `ELECTRS_DATA_PATH` fuer den Electrs-Index
+
+   Beispiel:
+   ```bash
+   BITCOIN_DATA_PATH=/mnt/ssd1/bitcoin
+   ELECTRS_DATA_PATH=/mnt/ssd2/electrs
+   ```
 
 3. Stack starten:
 

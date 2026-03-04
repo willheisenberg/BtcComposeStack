@@ -26,7 +26,7 @@ services:
       - "28332"
       - "28333"
     volumes:
-      - bitcoin-data:/home/bitcoin/.bitcoin
+      - ${BITCOIN_DATA_PATH:-./data/bitcoin}:/home/bitcoin/.bitcoin
       - ./config/bitcoin/bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf:ro
     command:
       - -printtoconsole
@@ -52,7 +52,7 @@ services:
     expose:
       - "3000"
     volumes:
-      - electrs-data:/data
+      - ${ELECTRS_DATA_PATH:-./data/electrs}:/data
     command:
       - --network=bitcoin
       - --db-dir=/data
@@ -147,8 +147,6 @@ networks:
     driver: bridge
 
 volumes:
-  bitcoin-data:
-  electrs-data:
   lightning-data:
   mempool-db-data:
   tor-data:
