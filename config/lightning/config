@@ -1,0 +1,6 @@
+network=bitcoin
+log-level=info
+bind-addr=0.0.0.0:9735
+proxy=tor:9050
+always-use-proxy=true
+grpc-port=9736

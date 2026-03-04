@@ -1,0 +1,12 @@
+SocksPort 0.0.0.0:9050
+ControlPort 0.0.0.0:9051
+DataDirectory /var/lib/tor
+CookieAuthentication 1
+AvoidDiskWrites 1
+
+# Expose bitcoind P2P only as an onion service.
+HiddenServiceDir /var/lib/tor/bitcoin-service/
+HiddenServiceVersion 3
+HiddenServicePort 8333 bitcoind:8333
+
+Log notice stdout

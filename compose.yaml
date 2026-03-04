@@ -1,0 +1,154 @@
+services:
+  tor:
+    build:
+      context: ./tor
+    container_name: tor
+    restart: unless-stopped
+    networks:
+      - btcstack
+    volumes:
+      - tor-data:/var/lib/tor
+      - ./tor/torrc:/etc/tor/torrc:ro
+    expose:
+      - "9050"
+      - "9051"
+
+  bitcoind:
+    image: ruimarinho/bitcoin-core:27
+    container_name: bitcoind
+    restart: unless-stopped
+    depends_on:
+      - tor
+    networks:
+      - btcstack
+    expose:
+      - "8332"
+      - "28332"
+      - "28333"
+    volumes:
+      - bitcoin-data:/home/bitcoin/.bitcoin
+      - ./config/bitcoin/bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf:ro
+    command:
+      - -printtoconsole
+      - -server=1
+      - -txindex=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=${BITCOIN_RPC_USER}
+      - -rpcpassword=${BITCOIN_RPC_PASSWORD}
+      - -zmqpubrawblock=tcp://0.0.0.0:28332
+      - -zmqpubrawtx=tcp://0.0.0.0:28333
+
+  electrs:
+    image: romanz/electrs:latest
+    container_name: electrs
+    restart: unless-stopped
+    depends_on:
+      - bitcoind
+    networks:
+      - btcstack
+    ports:
+      - "50001:50001"
+    expose:
+      - "3000"
+    volumes:
+      - electrs-data:/data
+    command:
+      - --network=bitcoin
+      - --db-dir=/data
+      - --daemon-rpc-addr=bitcoind:8332
+      - --daemon-p2p-addr=bitcoind:8333
+      - --cookie=${BITCOIN_RPC_USER}:${BITCOIN_RPC_PASSWORD}
+      - --electrum-rpc-addr=0.0.0.0:50001
+      - --http-addr=0.0.0.0:3000
+      - --cors=*
+
+  lightningd:
+    image: elementsproject/lightningd:v24.11
+    container_name: lightningd
+    restart: unless-stopped
+    depends_on:
+      - bitcoind
+      - tor
+    networks:
+      - btcstack
+    ports:
+      - "9735:9735"
+    volumes:
+      - lightning-data:/root/.lightning
+      - ./config/lightning/config:/root/.lightning/config:ro
+    command:
+      - --alias=${CLN_ALIAS}
+      - --bitcoin-rpcconnect=bitcoind
+      - --bitcoin-rpcport=8332
+      - --bitcoin-rpcuser=${BITCOIN_RPC_USER}
+      - --bitcoin-rpcpassword=${BITCOIN_RPC_PASSWORD}
+
+  mariadb:
+    image: mariadb:11
+    container_name: mempool-db
+    restart: unless-stopped
+    networks:
+      - btcstack
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MEMPOOL_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MEMPOOL_DB_NAME}
+      MYSQL_USER: ${MEMPOOL_DB_USER}
+      MYSQL_PASSWORD: ${MEMPOOL_DB_PASSWORD}
+    volumes:
+      - mempool-db-data:/var/lib/mysql
+
+  mempool-api:
+    image: mempool/backend:latest
+    container_name: mempool-api
+    restart: unless-stopped
+    depends_on:
+      - bitcoind
+      - electrs
+      - mariadb
+    networks:
+      - btcstack
+    expose:
+      - "8999"
+    environment:
+      CORE_RPC_HOST: bitcoind
+      CORE_RPC_PORT: 8332
+      CORE_RPC_USERNAME: ${BITCOIN_RPC_USER}
+      CORE_RPC_PASSWORD: ${BITCOIN_RPC_PASSWORD}
+      ELECTRUM_HOST: electrs
+      ELECTRUM_PORT: 50001
+      MEMPOOL_BACKEND: electrum
+      DATABASE_ENABLED: "true"
+      DATABASE_HOST: mariadb
+      DATABASE_PORT: 3306
+      DATABASE_DATABASE: ${MEMPOOL_DB_NAME}
+      DATABASE_USERNAME: ${MEMPOOL_DB_USER}
+      DATABASE_PASSWORD: ${MEMPOOL_DB_PASSWORD}
+      STATISTICS_ENABLED: "true"
+
+  mempool-web:
+    image: mempool/frontend:latest
+    container_name: mempool-web
+    restart: unless-stopped
+    depends_on:
+      - mempool-api
+    networks:
+      - btcstack
+    ports:
+      - "4080:8080"
+    environment:
+      FRONTEND_HTTP_PORT: 8080
+      BACKEND_MAINNET_HTTP_HOST: mempool-api
+      BACKEND_MAINNET_HTTP_PORT: 8999
+      ROOT_NETWORK: mainnet
+
+networks:
+  btcstack:
+    driver: bridge
+
+volumes:
+  bitcoin-data:
+  electrs-data:
+  lightning-data:
+  mempool-db-data:
+  tor-data:
