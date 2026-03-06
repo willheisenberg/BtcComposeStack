@@ -2,9 +2,9 @@
 
 Dieser Stack startet:
 
+- `tor`
 - `bitcoind`
 - `electrs`
-- `tor`
 - `c-lightning` (`lightningd`)
 - `mempool` (`backend`, `frontend`, `mariadb`)
 
@@ -46,3 +46,41 @@ Dieser Stack startet:
 - `tor` stellt fuer `bitcoind` einen Onion Service bereit. Die Adresse steht nach Start in `/var/lib/tor/bitcoin-service/hostname` im `tor`-Container.
 - `tor` wird als interner SOCKS-Proxy eingebunden. `bitcoind` und `lightningd` nutzen ihn fuer ausgehende Verbindungen.
 - Die erste Synchronisation von `bitcoind`, `electrs` und `mempool` dauert je nach Hardware und Storage deutlich.
+
+## Tor Troubleshooting (Permissions)
+
+Wenn `tor` mit folgendem Fehler crasht:
+
+```text
+Couldn't create private data directory "/var/lib/tor"
+```
+
+ist meist der Volume-Owner falsch. Ursache: Das Verzeichnis gehoert `root`, `tor` laeuft aber als UID/GID `100`.
+
+Fix:
+
+```bash
+sudo chown -R 100:100 /var/lib/docker/volumes/btccomposestack_tor-data/_data
+```
+
+Zusätzlich ist im Compose explizit gesetzt:
+
+```yaml
+services:
+  tor:
+    user: "100:100"
+```
+
+Damit passen Container-User und Volume-Berechtigungen zusammen.
+
+## Aktueller Stack-Status
+
+Aktuell laeuft das Setup als komplette self-hosted Bitcoin-Node-Plattform mit:
+
+- Tor
+- Bitcoin Core
+- Electrs
+- Core Lightning
+- MariaDB
+- Mempool Backend
+- Mempool Frontend
