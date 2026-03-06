@@ -4,17 +4,18 @@ services:
       context: ./tor
     container_name: tor
     restart: unless-stopped
+    user: "100:100"
     networks:
       - btcstack
     volumes:
       - tor-data:/var/lib/tor
-      - ./tor/torrc:/etc/tor/torrc:ro
+      - ./tor/torrc:/etc/tor/torrc
     expose:
       - "9050"
       - "9051"
 
   bitcoind:
-    image: ruimarinho/bitcoin-core:27
+    image: bitcoin/bitcoin:29.0
     container_name: bitcoind
     restart: unless-stopped
     depends_on:
@@ -27,7 +28,7 @@ services:
       - "28333"
     volumes:
       - ${BITCOIN_DATA_PATH:-./data/bitcoin}:/home/bitcoin/.bitcoin
-      - ./config/bitcoin/bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf:ro
+      - ./config/bitcoin/bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf
     command:
       - -printtoconsole
       - -server=1
@@ -40,7 +41,7 @@ services:
       - -zmqpubrawtx=tcp://0.0.0.0:28333
 
   electrs:
-    image: romanz/electrs:latest
+    image: mempool/electrs:v3.3.0
     container_name: electrs
     restart: unless-stopped
     depends_on:
