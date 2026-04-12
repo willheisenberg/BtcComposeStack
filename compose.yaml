@@ -55,10 +55,9 @@ services:
     volumes:
       - ${ELECTRS_DATA_PATH:-./data/electrs}:/data
     command:
-      - --network=bitcoin
+      - --network=mainnet
       - --db-dir=/data
       - --daemon-rpc-addr=bitcoind:8332
-      - --daemon-p2p-addr=bitcoind:8333
       - --cookie=${BITCOIN_RPC_USER}:${BITCOIN_RPC_PASSWORD}
       - --electrum-rpc-addr=0.0.0.0:50001
       - --http-addr=0.0.0.0:3000

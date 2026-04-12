@@ -73,6 +73,50 @@ services:
 
 Damit passen Container-User und Volume-Berechtigungen zusammen.
 
+## Bitcoind Troubleshooting (`chmod ... Input/output error`)
+
+Wenn `bitcoind` in einer Restart-Schleife mit so etwas haengt:
+
+```text
+chmod: changing permissions of '/home/bitcoin/.bitcoin': Input/output error
+```
+
+dann liegt das fast immer am Host-Mount fuer `BITCOIN_DATA_PATH`, nicht an Bitcoin Core selbst.
+Das Image `bitcoin/bitcoin:29.0` fuehrt beim Start ein `chmod` auf `/home/bitcoin/.bitcoin` aus. Das funktioniert nur auf einem Dateisystem mit normalen Linux-ACLs/Unix-Rechten.
+
+Typische Problemfaelle:
+
+- `BITCOIN_DATA_PATH` zeigt auf `NTFS`, `exFAT` oder ein gemountetes Windows-Laufwerk
+- der Pfad liegt auf `CIFS/SMB`, manchen `NFS`-Mounts oder FUSE-basiertem Storage
+- das Zielverzeichnis ist zwar beschreibbar, unterstuetzt aber kein echtes `chmod/chown`
+
+Fix:
+
+1. Lege den Bitcoin-Datenpfad auf ein natives Linux-Dateisystem wie `ext4` oder `xfs`.
+2. Erstelle das Verzeichnis vor dem Start.
+3. Setze den Owner auf die UID/GID des Containers (`101:101`).
+
+Beispiel:
+
+```bash
+sudo mkdir -p /srv/bitcoin-data
+sudo chown -R 101:101 /srv/bitcoin-data
+```
+
+Dann in `.env`:
+
+```bash
+BITCOIN_DATA_PATH=/srv/bitcoin-data
+```
+
+Danach den Container neu starten:
+
+```bash
+docker compose up -d bitcoind
+```
+
+Wenn du bewusst ein nicht-POSIX-faehiges Laufwerk verwenden willst, ist ein Docker Named Volume die robustere Option als ein direkter Bind-Mount.
+
 ## Aktueller Stack-Status
 
 Aktuell laeuft das Setup als komplette self-hosted Bitcoin-Node-Plattform mit:
